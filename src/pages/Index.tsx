@@ -34,8 +34,8 @@ const Index = () => {
       };
       reader.readAsDataURL(file);
       toast({
-        title: "📸 Photo uploaded!",
-        description: "Your character is ready for the adventure!",
+        title: "📸 Amazing photo!",
+        description: "I can see you! You're going to be the star of this comic!",
       });
     }
   };
@@ -51,16 +51,21 @@ const Index = () => {
     }
 
     setIsGenerating(true);
-    console.log("Creating comic with:", { storyPrompt, selectedTheme, hasImage: !!uploadedImage });
+    console.log("Creating personalized comic with:", { storyPrompt, selectedTheme, hasImage: !!uploadedImage });
     
     try {
+      toast({
+        title: "🎨 Creating your comic!",
+        description: "Bunny is analyzing your photo and writing your story...",
+      });
+      
       const comic = await ComicService.generateComic(storyPrompt, selectedTheme, uploadedImage || undefined);
       setGeneratedComic(comic);
       setStep(4);
       
       toast({
-        title: "🎉 Your comic is ready!",
-        description: "Bunny has created something magical for you!",
+        title: "🎉 Your personalized comic is ready!",
+        description: "Look! You're the hero of this amazing adventure!",
       });
     } catch (error) {
       console.error('Comic generation failed:', error);
@@ -89,7 +94,7 @@ const Index = () => {
               Hi! I'm Bunny!
             </h1>
             <p className="text-2xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Let's turn your amazing ideas into a magical comic book adventure! 🌟
+              Let's turn your amazing ideas into a magical comic book adventure where YOU are the hero! 🌟
             </p>
             <div className="flex flex-wrap justify-center gap-4 mb-8">
               <div className="flex items-center gap-2 bg-white/80 rounded-full px-4 py-2 shadow-lg">
@@ -102,7 +107,7 @@ const Index = () => {
               </div>
               <div className="flex items-center gap-2 bg-white/80 rounded-full px-4 py-2 shadow-lg">
                 <BookOpen className="text-green-500" size={20} />
-                <span className="text-gray-700 font-medium">Get your comic</span>
+                <span className="text-gray-700 font-medium">Become the hero</span>
               </div>
             </div>
             <Button 
@@ -110,7 +115,7 @@ const Index = () => {
               size="lg"
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-4 px-8 rounded-full text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
             >
-              Let's Make a Comic! 🎨
+              Let's Make YOU the Hero! 🎨
             </Button>
           </div>
 
@@ -134,7 +139,7 @@ const Index = () => {
               <CardContent className="p-6 text-center">
                 <div className="text-4xl mb-4">📚</div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">Your Comic</h3>
-                <p className="text-gray-600">A beautiful comic book just for you!</p>
+                <p className="text-gray-600">A personalized comic book starring YOU!</p>
               </CardContent>
             </Card>
           </div>
@@ -151,7 +156,7 @@ const Index = () => {
             <div className="text-center mb-8">
               <div className="text-6xl mb-4">🐰✨</div>
               <h2 className="text-4xl font-bold text-gray-800 mb-4">Upload Your Photo</h2>
-              <p className="text-xl text-gray-600">This will be YOU in the comic!</p>
+              <p className="text-xl text-gray-600">This will be YOU in the comic adventure!</p>
             </div>
 
             <Card className="bg-white/80 shadow-2xl border-0 mb-6">
@@ -161,10 +166,11 @@ const Index = () => {
                     <div className="space-y-4">
                       <img 
                         src={uploadedImage} 
-                        alt="Uploaded character" 
+                        alt="Your photo - the hero of the story!" 
                         className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-purple-300"
                       />
-                      <p className="text-green-600 font-bold text-lg">Perfect! You look amazing! 🌟</p>
+                      <p className="text-green-600 font-bold text-lg">Perfect! You look like a real hero! 🌟</p>
+                      <p className="text-sm text-gray-600">I'll make sure you're the main character in your comic!</p>
                       <Button
                         onClick={() => setUploadedImage(null)}
                         variant="outline"
@@ -181,7 +187,7 @@ const Index = () => {
                           Click to upload your photo
                         </p>
                         <p className="text-gray-500">
-                          Pick your favorite selfie! 📸
+                          Pick your favorite photo so I can make you the hero! 📸
                         </p>
                       </div>
                       <input
@@ -235,7 +241,7 @@ const Index = () => {
             <div className="text-center mb-8">
               <div className="text-6xl mb-4">🐰💭</div>
               <h2 className="text-4xl font-bold text-gray-800 mb-4">Tell Me Your Story Idea</h2>
-              <p className="text-xl text-gray-600">What amazing adventure should we create?</p>
+              <p className="text-xl text-gray-600">What amazing adventure should we create for you?</p>
             </div>
 
             <Card className="bg-white/80 shadow-2xl border-0 mb-8">
@@ -246,13 +252,13 @@ const Index = () => {
                       🌟 Your Amazing Idea:
                     </label>
                     <Textarea
-                      placeholder="I found a magical bunny that could fly..."
+                      placeholder="I want to explore space and meet aliens..."
                       value={storyPrompt}
                       onChange={(e) => setStoryPrompt(e.target.value)}
                       className="w-full p-4 text-lg border-2 border-purple-200 rounded-xl focus:border-purple-400 focus:ring-0 min-h-[120px] bg-white/80"
                     />
                     <p className="text-sm text-gray-500 mt-2">
-                      Just one sentence is enough! Bunny will make it into a whole story! ✨
+                      Just one sentence is enough! I'll turn YOU into the hero of this story! ✨
                     </p>
                   </div>
 
@@ -298,10 +304,10 @@ const Index = () => {
                 {isGenerating ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    Creating Magic...
+                    Creating Your Story...
                   </div>
                 ) : (
-                  "Create My Comic! 🎨✨"
+                  "Make Me The Hero! 🎨✨"
                 )}
               </Button>
             </div>
@@ -318,10 +324,10 @@ const Index = () => {
           <div className="text-center mb-8">
             <div className="text-8xl mb-4 animate-bounce">🎉</div>
             <h2 className="text-5xl font-bold text-gray-800 mb-4">
-              Your Comic is Ready!
+              Your Personal Comic is Ready!
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Bunny has created something absolutely magical just for you! 
+              Look! You're the hero of this amazing adventure! 
             </p>
           </div>
 
@@ -330,7 +336,7 @@ const Index = () => {
             onDownload={() => {
               toast({
                 title: "🎉 Amazing!",
-                description: "Your comic is ready to share with everyone!",
+                description: "Your personalized comic is ready to share with everyone!",
               });
             }}
           />
@@ -348,7 +354,7 @@ const Index = () => {
                 setGeneratedComic(null);
               }}
             >
-              🎨 Make Another Comic
+              🎨 Make Another Hero Story
             </Button>
           </div>
 
