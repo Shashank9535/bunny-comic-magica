@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Upload, Sparkles, BookOpen, Star, Heart, Camera } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { ComicService, ComicData } from '@/services/comicService';
+import ComicViewer from '@/components/ComicViewer';
 
 const Index = () => {
   const [step, setStep] = useState(1);
@@ -13,6 +14,7 @@ const Index = () => {
   const [selectedTheme, setSelectedTheme] = useState('');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedComic, setGeneratedComic] = useState<ComicData | null>(null);
 
   const themes = [
     { id: 'adventure', name: '🏴‍☠️ Adventure', color: 'bg-orange-100 border-orange-300' },
@@ -51,15 +53,25 @@ const Index = () => {
     setIsGenerating(true);
     console.log("Creating comic with:", { storyPrompt, selectedTheme, hasImage: !!uploadedImage });
     
-    // Simulate API call for demo
-    setTimeout(() => {
-      setIsGenerating(false);
+    try {
+      const comic = await ComicService.generateComic(storyPrompt, selectedTheme, uploadedImage || undefined);
+      setGeneratedComic(comic);
+      setStep(4);
+      
       toast({
         title: "🎉 Your comic is ready!",
         description: "Bunny has created something magical for you!",
       });
-      setStep(4);
-    }, 3000);
+    } catch (error) {
+      console.error('Comic generation failed:', error);
+      toast({
+        title: "😅 Oops!",
+        description: "Bunny had trouble making your comic. Let's try again!",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (step === 1) {
@@ -299,72 +311,52 @@ const Index = () => {
     );
   }
 
-  if (step === 4) {
+  if (step === 4 && generatedComic) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-yellow-100">
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="mb-8">
-              <div className="text-8xl mb-4 animate-bounce">🎉</div>
-              <h2 className="text-5xl font-bold text-gray-800 mb-4">
-                Your Comic is Ready!
-              </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Bunny has created something absolutely magical just for you! 
-              </p>
-            </div>
+          <div className="text-center mb-8">
+            <div className="text-8xl mb-4 animate-bounce">🎉</div>
+            <h2 className="text-5xl font-bold text-gray-800 mb-4">
+              Your Comic is Ready!
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Bunny has created something absolutely magical just for you! 
+            </p>
+          </div>
 
-            {/* Comic Preview Placeholder */}
-            <Card className="bg-white/80 shadow-2xl border-0 mb-8">
-              <CardContent className="p-8">
-                <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl p-8 min-h-[400px] flex items-center justify-center border-4 border-dashed border-orange-300">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">📚✨</div>
-                    <h3 className="text-2xl font-bold text-gray-700 mb-2">Your Amazing Comic</h3>
-                    <p className="text-gray-600 mb-4">
-                      "{storyPrompt}" becomes a wonderful {themes.find(t => t.id === selectedTheme)?.name} adventure!
-                    </p>
-                    <div className="grid grid-cols-3 gap-4 max-w-md mx-auto mt-6">
-                      {[1, 2, 3, 4, 5, 6].map((panel) => (
-                        <div key={panel} className="bg-white rounded-lg p-4 shadow-md border-2 border-purple-200">
-                          <div className="text-2xl mb-2">🎨</div>
-                          <div className="text-xs text-gray-500">Panel {panel}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <ComicViewer 
+            comicData={generatedComic}
+            onDownload={() => {
+              toast({
+                title: "🎉 Amazing!",
+                description: "Your comic is ready to share with everyone!",
+              });
+            }}
+          />
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-full text-lg"
-              >
-                📥 Download Comic
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-purple-300 text-purple-600 hover:bg-purple-50 font-bold py-4 px-8 rounded-full text-lg"
-                onClick={() => {
-                  setStep(1);
-                  setStoryPrompt('');
-                  setSelectedTheme('');
-                  setUploadedImage(null);
-                }}
-              >
-                🎨 Make Another Comic
-              </Button>
-            </div>
+          <div className="text-center mt-8">
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-2 border-purple-300 text-purple-600 hover:bg-purple-50 font-bold py-4 px-8 rounded-full text-lg"
+              onClick={() => {
+                setStep(1);
+                setStoryPrompt('');
+                setSelectedTheme('');
+                setUploadedImage(null);
+                setGeneratedComic(null);
+              }}
+            >
+              🎨 Make Another Comic
+            </Button>
+          </div>
 
-            <div className="mt-8 text-center">
-              <div className="flex items-center justify-center gap-2 text-purple-600">
-                <Heart className="text-red-500" size={20} />
-                <span className="text-lg">Made with love by Bunny</span>
-                <Heart className="text-red-500" size={20} />
-              </div>
+          <div className="mt-8 text-center">
+            <div className="flex items-center justify-center gap-2 text-purple-600">
+              <Heart className="text-red-500" size={20} />
+              <span className="text-lg">Made with love by Bunny</span>
+              <Heart className="text-red-500" size={20} />
             </div>
           </div>
         </div>
