@@ -1,6 +1,5 @@
-
 export class ImageAnalysisService {
-  private static readonly HF_API_KEY = 'hf_your_token_here'; // You'll need to set this
+  private static readonly HF_API_KEY = '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'; // Reading API key
   private static readonly BLIP_API_URL = 'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base';
 
   static async analyzeUploadedImage(imageUrl: string): Promise<string> {

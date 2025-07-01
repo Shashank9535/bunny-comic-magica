@@ -15,7 +15,7 @@ export interface ComicData {
 }
 
 export class ComicService {
-  private static readonly HF_API_KEY = 'hf_your_token_here'; // You'll need to set this
+  private static readonly HF_API_KEY = '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'; // Writing API key
   private static readonly FLUX_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev';
   
   static async generateComic(
