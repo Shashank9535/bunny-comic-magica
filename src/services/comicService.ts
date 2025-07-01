@@ -1,4 +1,5 @@
 import { ImageAnalysisService } from './imageAnalysisService';
+import { OpenRouterService } from './openRouterService';
 
 export interface ComicPanel {
   panel: number;
@@ -14,41 +15,61 @@ export interface ComicData {
 }
 
 export class ComicService {
-  private static readonly FALLBACK_API_URL = 'https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5';
+  private static readonly HF_API_KEY = 'hf_your_token_here'; // You'll need to set this
+  private static readonly FLUX_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev';
   
   static async generateComic(
     storyPrompt: string, 
     theme: string, 
     characterImage?: string
   ): Promise<ComicData> {
-    console.log('Generating comic with:', { storyPrompt, theme, hasImage: !!characterImage });
+    console.log('Generating personalized comic with:', { storyPrompt, theme, hasImage: !!characterImage });
     
     try {
-      // First, analyze the uploaded image to get character description
+      // Step 1: Analyze the uploaded image to get character description
       let characterDescription = "a young adventurer";
       if (characterImage) {
         try {
           characterDescription = await ImageAnalysisService.analyzeUploadedImage(characterImage);
-          console.log('Character description:', characterDescription);
+          console.log('Character description from BLIP:', characterDescription);
         } catch (error) {
           console.error('Failed to analyze image:', error);
         }
       }
       
-      const title = this.generateTitle(storyPrompt, characterDescription);
-      const storyPanels = this.generatePersonalizedStoryPanels(storyPrompt, theme, characterDescription);
+      // Step 2: Generate personalized story using OpenRouter
+      const storyPanels = await OpenRouterService.generatePersonalizedStory(
+        characterDescription, 
+        theme, 
+        storyPrompt
+      );
       
-      // Generate images for each panel
+      // Step 3: Create comic panels with personalized content
+      const title = this.generateTitle(storyPrompt, characterDescription);
+      
+      // Step 4: Generate images for each panel using FLUX
       const panelsWithImages = await Promise.all(
-        storyPanels.map(async (panel, index) => {
+        storyPanels.map(async (panelDescription, index) => {
           try {
-            const imageUrl = await this.generatePanelImage(panel.prompt, theme, index, characterDescription);
-            return { ...panel, imageUrl };
-          } catch (error) {
-            console.error(`Failed to generate image for panel ${panel.panel}:`, error);
+            const imageUrl = await this.generatePanelImageWithFlux(
+              panelDescription, 
+              theme, 
+              index, 
+              characterDescription
+            );
             return {
-              ...panel,
-              imageUrl: this.getThemeBasedPlaceholder(theme, panel.panel)
+              panel: index + 1,
+              caption: `Panel ${index + 1}: ${panelDescription}`,
+              imageUrl,
+              prompt: `${characterDescription} ${panelDescription}, ${theme} style, comic book illustration`
+            };
+          } catch (error) {
+            console.error(`Failed to generate image for panel ${index + 1}:`, error);
+            return {
+              panel: index + 1,
+              caption: `Panel ${index + 1}: ${panelDescription}`,
+              imageUrl: this.getThemeBasedPlaceholder(theme, index + 1),
+              prompt: `${characterDescription} ${panelDescription}, ${theme} style, comic book illustration`
             };
           }
         })
@@ -65,70 +86,47 @@ export class ComicService {
     }
   }
 
-  private static async generatePanelImage(
-    prompt: string, 
+  private static async generatePanelImageWithFlux(
+    panelDescription: string, 
     theme: string, 
     panelIndex: number, 
     characterDescription: string
   ): Promise<string> {
-    const enhancedPrompt = `${characterDescription} ${prompt}, ${theme} style, comic book illustration, colorful, child-friendly, cartoon style, bright colors, happy adventure`;
+    const enhancedPrompt = `${characterDescription} ${panelDescription}, ${theme} adventure, comic book style, colorful, child-friendly, cartoon illustration, bright colors, happy, safe for kids`;
     
     try {
-      console.log(`Generating image for panel ${panelIndex + 1} with prompt:`, enhancedPrompt);
+      console.log(`Generating image for panel ${panelIndex + 1} with FLUX:`, enhancedPrompt);
       
-      // Try multiple image generation approaches
-      const imageUrl = await this.tryMultipleImageSources(enhancedPrompt, panelIndex);
-      return imageUrl;
-    } catch (error) {
-      console.error('All image generation methods failed:', error);
-      return this.getThemeBasedPlaceholder(theme, panelIndex + 1);
-    }
-  }
-
-  private static async tryMultipleImageSources(prompt: string, panelIndex: number): Promise<string> {
-    // Method 1: Try original Stability AI endpoint
-    try {
-      const response = await fetch('https://stabilityai-stable-diffusion.hf.space/api/predict', {
+      const response = await fetch(this.FLUX_API_URL, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${this.HF_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          data: [prompt, "dark, scary, violent, adult content, nsfw, realistic, photographic", 7],
-          fn_index: panelIndex % 3
+          inputs: enhancedPrompt,
+          parameters: {
+            guidance_scale: 7.5,
+            negative_prompt: "dark, scary, violent, adult content, nsfw, realistic, photographic, ugly, deformed",
+            num_inference_steps: 20,
+            width: 400,
+            height: 300,
+            seed: panelIndex + Math.floor(Math.random() * 1000)
+          }
         })
       });
 
       if (response.ok) {
-        const result = await response.json();
-        if (result.data && result.data[0]) {
-          if (typeof result.data[0] === 'object' && result.data[0].url) {
-            return result.data[0].url;
-          }
-          if (typeof result.data[0] === 'string' && result.data[0].startsWith('http')) {
-            return result.data[0];
-          }
-          if (typeof result.data[0] === 'string') {
-            return `https://stabilityai-stable-diffusion.hf.space/file=${result.data[0]}`;
-          }
-        }
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        return imageUrl;
       }
+      
+      throw new Error(`FLUX API error: ${response.status}`);
     } catch (error) {
-      console.log('Method 1 failed:', error);
+      console.error('FLUX image generation failed:', error);
+      return this.getThemeBasedPlaceholder(theme, panelIndex + 1);
     }
-
-    // Method 2: Try alternative placeholder service with better themes
-    const themeImages = {
-      adventure: `https://picsum.photos/400/300?random=${panelIndex}&adventure`,
-      space: `https://picsum.photos/400/300?random=${panelIndex}&space`,
-      forest: `https://picsum.photos/400/300?random=${panelIndex}&forest`,
-      magic: `https://picsum.photos/400/300?random=${panelIndex}&magic`,
-      ocean: `https://picsum.photos/400/300?random=${panelIndex}&ocean`,
-      castle: `https://picsum.photos/400/300?random=${panelIndex}&castle`
-    };
-
-    // Return a themed placeholder
-    throw new Error('Image generation failed');
   }
 
   private static getThemeBasedPlaceholder(theme: string, panelNumber: number): string {
@@ -153,76 +151,20 @@ export class ComicService {
     ).join(' ')} Adventure`;
   }
 
-  private static generatePersonalizedStoryPanels(
-    prompt: string, 
-    theme: string, 
-    characterDescription: string
-  ): Omit<ComicPanel, 'imageUrl'>[] {
-    const themeStories = {
-      adventure: [
-        `${characterDescription} discovers a mysterious treasure map hidden in an old chest`,
-        `Setting sail on a brave journey across the sparkling blue ocean`,
-        `Landing on a magical island filled with colorful flowers and friendly animals`,
-        `Exploring ancient caves and solving clever puzzles along the way`,
-        `Finding the golden treasure chest and sharing it with new friends`,
-        `Returning home as a celebrated hero with amazing stories to tell`
-      ],
-      space: [
-        `${characterDescription} builds an amazing rocket ship in the backyard`,
-        `Blasting off into the starry cosmos on an incredible space adventure`,
-        `Landing on a colorful alien planet with floating crystals and glowing plants`,
-        `Meeting friendly alien creatures who speak in musical sounds`,
-        `Working together to solve an intergalactic puzzle and save the planet`,
-        `Flying home with new alien friends and cosmic wisdom`
-      ],
-      forest: [
-        `${characterDescription} enters a magical forest where trees whisper secrets`,
-        `Meeting talking woodland animals who become trusted guides`,
-        `Discovering a hidden fairy ring that glows with rainbow light`,
-        `Learning ancient forest magic from wise old tree spirits`,
-        `Using newfound powers to help forest creatures solve their problems`,
-        `Becoming the forest guardian and protector of all woodland friends`
-      ],
-      magic: [
-        `${characterDescription} finds a glowing magic wand hidden in the attic`,
-        `Learning to cast colorful spells that make flowers bloom and stars dance`,
-        `Opening a shimmering portal to a wonderful fantasy realm`,
-        `Meeting a wise wizard who teaches amazing magical lessons`,
-        `Using magic powers to help solve problems and spread happiness`,
-        `Returning home as a skilled young magician with a heart full of joy`
-      ],
-      ocean: [
-        `${characterDescription} dives into crystal clear ocean waters`,
-        `Swimming alongside playful dolphins and colorful tropical fish`,
-        `Discovering an underwater city made of coral and sea shells`,
-        `Meeting beautiful mermaids who show hidden ocean treasures`,
-        `Helping sea creatures clean up their ocean home`,
-        `Surfacing with new ocean friends and a promise to protect the seas`
-      ],
-      castle: [
-        `${characterDescription} approaches a magnificent castle on a hilltop`,
-        `Meeting a kind royal family who welcomes them with open arms`,
-        `Learning about castle life and helping with royal duties`,
-        `Discovering a problem that threatens the peaceful kingdom`,
-        `Using cleverness and courage to save the day`,
-        `Being honored as a hero in the royal court with a grand celebration`
-      ]
-    };
-
-    const stories = themeStories[theme as keyof typeof themeStories] || themeStories.adventure;
-    
-    return stories.map((story, index) => ({
-      panel: index + 1,
-      caption: `Panel ${index + 1}: ${story}`,
-      prompt: `${story}, ${theme} adventure, featuring ${characterDescription}`
-    }));
-  }
-
   private static generateMockComic(storyPrompt: string, theme: string, characterImage?: string): ComicData {
     const characterDescription = characterImage ? "a young adventurer" : "a brave hero";
-    const mockPanels = this.generatePersonalizedStoryPanels(storyPrompt, theme, characterDescription).map(panel => ({
-      ...panel,
-      imageUrl: this.getThemeBasedPlaceholder(theme, panel.panel)
+    const mockPanels = [
+      "begins an amazing adventure",
+      "discovers something magical",
+      "faces a fun challenge",
+      "learns something important",
+      "helps new friends",
+      "returns home as a hero"
+    ].map((description, index) => ({
+      panel: index + 1,
+      caption: `Panel ${index + 1}: ${characterDescription} ${description}`,
+      imageUrl: this.getThemeBasedPlaceholder(theme, index + 1),
+      prompt: `${characterDescription} ${description}, ${theme} style`
     }));
 
     return {
