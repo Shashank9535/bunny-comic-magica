@@ -1,3 +1,4 @@
+
 export class ImageAnalysisService {
   private static readonly HF_API_KEY = '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'; // Reading API key
   private static readonly BLIP_API_URL = 'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base';
@@ -15,7 +16,6 @@ export class ImageAnalysisService {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.HF_API_KEY}`,
-          'Content-Type': 'application/json',
         },
         body: imageBlob,
       });
