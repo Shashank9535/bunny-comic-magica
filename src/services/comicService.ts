@@ -1,3 +1,4 @@
+
 import { ImageAnalysisService } from './imageAnalysisService';
 import { OpenRouterService } from './openRouterService';
 
@@ -23,34 +24,41 @@ export class ComicService {
     theme: string, 
     characterImage?: string
   ): Promise<ComicData> {
-    console.log('Generating personalized comic with:', { storyPrompt, theme, hasImage: !!characterImage });
+    console.log('=== COMIC GENERATION STARTED ===');
+    console.log('Input parameters:', { storyPrompt, theme, hasImage: !!characterImage });
     
     try {
       // Step 1: Analyze the uploaded image to get character description
       let characterDescription = "a young adventurer";
       if (characterImage) {
         try {
+          console.log('Step 1: Analyzing character image...');
           characterDescription = await ImageAnalysisService.analyzeUploadedImage(characterImage);
           console.log('Character description from BLIP:', characterDescription);
         } catch (error) {
-          console.error('Failed to analyze image:', error);
+          console.error('Image analysis failed, using fallback:', error);
         }
       }
       
       // Step 2: Generate personalized story using OpenRouter
+      console.log('Step 2: Generating story with OpenRouter...');
       const storyPanels = await OpenRouterService.generatePersonalizedStory(
         characterDescription, 
         theme, 
         storyPrompt
       );
+      console.log('Generated story panels:', storyPanels);
       
       // Step 3: Create comic panels with personalized content
       const title = this.generateTitle(storyPrompt, characterDescription);
+      console.log('Generated title:', title);
       
       // Step 4: Generate images for each panel using FLUX
+      console.log('Step 4: Generating images for panels...');
       const panelsWithImages = await Promise.all(
         storyPanels.map(async (panelDescription, index) => {
           try {
+            console.log(`Generating image for panel ${index + 1}...`);
             const imageUrl = await this.generatePanelImageWithFlux(
               panelDescription, 
               theme, 
@@ -75,13 +83,14 @@ export class ComicService {
         })
       );
       
+      console.log('=== COMIC GENERATION COMPLETED ===');
       return {
         title,
         panels: panelsWithImages,
         theme
       };
     } catch (error) {
-      console.error('Comic generation failed:', error);
+      console.error('Comic generation failed completely:', error);
       return this.generateMockComic(storyPrompt, theme, characterImage);
     }
   }
