@@ -14,34 +14,33 @@ serve(async (req) => {
   try {
     const { prompt, characterDescription } = await req.json()
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not found')
+    const togetherApiKey = Deno.env.get('TOGETHER_API_KEY')
+    if (!togetherApiKey) {
+      throw new Error('Together AI API key not found')
     }
 
     // Enhanced prompt for child-friendly comic images
     const enhancedPrompt = `${characterDescription} ${prompt}, comic book illustration style, colorful cartoon art, child-friendly, bright colors, happy adventure, digital art, no text or speech bubbles`
 
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${togetherApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'black-forest-labs/FLUX.1-kontext-dev',
         prompt: enhancedPrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-        style: 'vivid'
+        width: 1024,
+        height: 1024,
+        steps: 28
       })
     })
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('OpenAI API error:', error)
-      throw new Error(`OpenAI API error: ${response.status}`)
+      console.error('Together AI API error:', error)
+      throw new Error(`Together AI API error: ${response.status}`)
     }
 
     const result = await response.json()
