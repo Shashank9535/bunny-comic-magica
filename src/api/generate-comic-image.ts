@@ -35,16 +35,18 @@ export async function generateComicImage(prompt: string, characterDescription: s
 }
 
 async function generateImageDirectly(prompt: string, characterDescription: string): Promise<string> {
-  // Direct OpenAI API call as fallback
+  // Use OpenRouter API key with correct endpoint
   const apiKey = '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';
   
   const enhancedPrompt = `${characterDescription} ${prompt}, comic book illustration style, colorful cartoon art, child-friendly, bright colors, happy adventure, digital art, no text or speech bubbles`;
 
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
+  const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'Comic Generator'
     },
     body: JSON.stringify({
       model: 'dall-e-3',
@@ -57,7 +59,7 @@ async function generateImageDirectly(prompt: string, characterDescription: strin
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    throw new Error(`OpenRouter API error: ${response.status}`);
   }
 
   const result = await response.json();
