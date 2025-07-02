@@ -71,65 +71,21 @@ export class ComicService {
     panelIndex: number, 
     characterDescription: string
   ): Promise<string> {
-    const enhancedPrompt = `${characterDescription} ${prompt}, ${theme} style, comic book illustration, colorful, child-friendly, cartoon style, bright colors, happy adventure`;
-    
     try {
-      console.log(`Generating image for panel ${panelIndex + 1} with prompt:`, enhancedPrompt);
+      console.log(`Generating image for panel ${panelIndex + 1} with ChatGPT API`);
       
-      // Try multiple image generation approaches
-      const imageUrl = await this.tryMultipleImageSources(enhancedPrompt, panelIndex);
+      // Import and use the API module
+      const { generateComicImage } = await import('../api/generate-comic-image');
+      const imageUrl = await generateComicImage(`${prompt}, ${theme} style`, characterDescription);
+      
+      console.log(`Successfully generated image for panel ${panelIndex + 1}`);
       return imageUrl;
     } catch (error) {
-      console.error('All image generation methods failed:', error);
+      console.error(`Failed to generate image for panel ${panelIndex + 1}:`, error);
       return this.getThemeBasedPlaceholder(theme, panelIndex + 1);
     }
   }
 
-  private static async tryMultipleImageSources(prompt: string, panelIndex: number): Promise<string> {
-    // Method 1: Try original Stability AI endpoint
-    try {
-      const response = await fetch('https://stabilityai-stable-diffusion.hf.space/api/predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: [prompt, "dark, scary, violent, adult content, nsfw, realistic, photographic", 7],
-          fn_index: panelIndex % 3
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.data && result.data[0]) {
-          if (typeof result.data[0] === 'object' && result.data[0].url) {
-            return result.data[0].url;
-          }
-          if (typeof result.data[0] === 'string' && result.data[0].startsWith('http')) {
-            return result.data[0];
-          }
-          if (typeof result.data[0] === 'string') {
-            return `https://stabilityai-stable-diffusion.hf.space/file=${result.data[0]}`;
-          }
-        }
-      }
-    } catch (error) {
-      console.log('Method 1 failed:', error);
-    }
-
-    // Method 2: Try alternative placeholder service with better themes
-    const themeImages = {
-      adventure: `https://picsum.photos/400/300?random=${panelIndex}&adventure`,
-      space: `https://picsum.photos/400/300?random=${panelIndex}&space`,
-      forest: `https://picsum.photos/400/300?random=${panelIndex}&forest`,
-      magic: `https://picsum.photos/400/300?random=${panelIndex}&magic`,
-      ocean: `https://picsum.photos/400/300?random=${panelIndex}&ocean`,
-      castle: `https://picsum.photos/400/300?random=${panelIndex}&castle`
-    };
-
-    // Return a themed placeholder
-    throw new Error('Image generation failed');
-  }
 
   private static getThemeBasedPlaceholder(theme: string, panelNumber: number): string {
     const themeEmojis = {
