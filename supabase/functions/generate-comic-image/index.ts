@@ -14,18 +14,20 @@ serve(async (req) => {
   try {
     const { prompt, characterDescription } = await req.json()
 
-    const togetherApiKey = Deno.env.get('TOGETHER_API_KEY')
-    if (!togetherApiKey) {
-      throw new Error('Together AI API key not found')
+    const fluxApiKey = Deno.env.get('FLUX_API_KEY')
+    if (!fluxApiKey) {
+      throw new Error('FLUX API key not found')
     }
 
     // Enhanced prompt for child-friendly comic images
     const enhancedPrompt = `${characterDescription} ${prompt}, comic book illustration style, colorful cartoon art, child-friendly, bright colors, happy adventure, digital art, no text or speech bubbles`
 
+    console.log('Generating image with FLUX API:', enhancedPrompt)
+
     const response = await fetch('https://api.together.xyz/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${togetherApiKey}`,
+        'Authorization': `Bearer ${fluxApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -39,11 +41,16 @@ serve(async (req) => {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('Together AI API error:', error)
-      throw new Error(`Together AI API error: ${response.status}`)
+      console.error('FLUX API error:', error)
+      throw new Error(`FLUX API error: ${response.status} - ${error}`)
     }
 
     const result = await response.json()
+    console.log('FLUX API response received:', result)
+    
+    if (!result.data || !result.data[0] || !result.data[0].url) {
+      throw new Error('Invalid response from FLUX API')
+    }
     
     return new Response(
       JSON.stringify({ 

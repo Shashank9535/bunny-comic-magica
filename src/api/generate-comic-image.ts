@@ -1,18 +1,12 @@
 // Frontend proxy to call Supabase Edge Function
 export async function generateComicImage(prompt: string, characterDescription: string): Promise<string> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    console.log('Calling Supabase Edge Function for image generation...');
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      // Fallback to direct OpenAI API call if Supabase not configured
-      return await generateImageDirectly(prompt, characterDescription);
-    }
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/generate-comic-image`, {
+    const response = await fetch('https://tyaficloiudvkrorlcra.supabase.co/functions/v1/generate-comic-image', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5YWZpY2xvaXVkdmtyb3JsY3JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzY2NDgsImV4cCI6MjA2NzA1MjY0OH0.aKxm2YdyM8sZAZgRWjau9oc5tOwtm6qWYpw9vFFTqFc',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -22,46 +16,22 @@ export async function generateComicImage(prompt: string, characterDescription: s
     });
 
     if (!response.ok) {
-      throw new Error(`Supabase function failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Supabase function error:', response.status, errorText);
+      throw new Error(`Supabase function failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
+    console.log('Successfully received image from Supabase:', result);
+    
+    if (!result.success || !result.imageUrl) {
+      throw new Error('Invalid response from Supabase function');
+    }
+    
     return result.imageUrl;
   } catch (error) {
     console.error('Error calling Supabase function:', error);
-    // Fallback to direct API call
-    return await generateImageDirectly(prompt, characterDescription);
+    // If Supabase fails, fall back to placeholder
+    throw error;
   }
-}
-
-async function generateImageDirectly(prompt: string, characterDescription: string): Promise<string> {
-  // Use OpenRouter API key with correct endpoint
-  const apiKey = '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';
-  
-  const enhancedPrompt = `${characterDescription} ${prompt}, comic book illustration style, colorful cartoon art, child-friendly, bright colors, happy adventure, digital art, no text or speech bubbles`;
-
-  const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'Comic Generator'
-    },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt: enhancedPrompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'standard',
-      style: 'vivid'
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status}`);
-  }
-
-  const result = await response.json();
-  return result.data[0].url;
 }
